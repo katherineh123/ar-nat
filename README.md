@@ -80,5 +80,5 @@ http://localhost:8080/websocket_frontend.html
 - Reduce latency of the ReAct agent in the Q&A function
 - Increase coverage of the ReAct agent in the Q&A function (add Internet Search tool to fall back on if the RAG knowledge base can not answer the user's question)
 - Add a VLM tool to the ReAct agent in the Q&A function
-- Display session logs in the UI
+- Display past logged conversations in the UI
 - Code clean-up
