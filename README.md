@@ -35,13 +35,11 @@ pip install faiss-cpu sentence-transformers langchain-community langchain-text-s
 
 ### 5. Load configuration from .env
 ```bash
-# Return to project root and load all configuration
-cd .. && source <(python3 load_config.py -e)
+# Return to project root and load configuration
+cd .. && source <(python3 load_config.py)
 ```
 
-This script:
-- Reads `.env` and generates `ar_lab_assistant/config.js` for the frontend
-- Exports all backend environment variables (`NVIDIA_API_KEY`, `BACKEND_HOST`, `BACKEND_PORT`, `FRONTEND_PORT`) to your current shell
+This generates `ar_lab_assistant/config.js` for the frontend and exports backend environment variables.
 
 ### 6. Start the NAT backend server
 ```bash
@@ -60,32 +58,7 @@ cd ar_lab_assistant && python3 -m http.server ${FRONTEND_PORT:-8080}
 http://${BACKEND_HOST}:${FRONTEND_PORT}/websocket_frontend.html
 ```
 
-Example with default values:
+For example, it might look something like this (using default values here):
 ```
 http://localhost:8080/websocket_frontend.html
 ```
-
-## Quick Reference
-
-### load_config.py Script
-
-The `load_config.py` script provides a unified way to manage all configuration:
-
-```bash
-# Generate config.js and show export commands (informational)
-python3 load_config.py
-
-# Load environment variables into current shell
-source <(python3 load_config.py -e)
-
-# Only show export commands (no config.js generation)
-python3 load_config.py --export-only
-
-# Quiet mode (suppress informational messages)
-python3 load_config.py -q
-```
-
-**What it does:**
-- ✅ Reads `.env` file
-- ✅ Generates `ar_lab_assistant/config.js` for frontend WebSocket URL
-- ✅ Exports backend environment variables (`NVIDIA_API_KEY`, `BACKEND_HOST`, `BACKEND_PORT`, `FRONTEND_PORT`)
