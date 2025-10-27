@@ -1,6 +1,9 @@
 NeMo-Agent-Toolkit/
 simple_frontend.html
 
+# Environment variables
+.env
+
 ar_lab_assistant/.venv/
 ar_lab_assistant/data/
 
@@ -15,3 +18,7 @@ ar_lab_assistant/src/ar_lab_assistant/archive/
 
 ar_lab_assistant/src/ar_lab_assistant/functions/__pycache__/
 ar_lab_assistant/src/ar_lab_assistant/tools/__pycache__/
+
+ar_lab_assistant/config.js
+
+vulnerability-analysis/

@@ -156,6 +156,9 @@
         </div>
     </div>
 
+    <!-- Load configuration -->
+    <script src="config.js"></script>
+    
     <script>
         let ws = null;
         let isConnected = false;
@@ -164,7 +167,7 @@
         let waitingForHITLResponse = false;  // Track if we're waiting for a HITL response
         let lastInteractionId = null;  // Track the last interaction prompt ID
 
-        const API_BASE_URL = 'ws://10.185.124.93:8009/websocket';
+        const API_BASE_URL = CONFIG.WEBSOCKET_URL;
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
