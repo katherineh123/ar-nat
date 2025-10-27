@@ -7,19 +7,23 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f5f5f5;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
         }
         .chat-container {
             background: white;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            height: 500px;
+            flex: 1;
             display: flex;
             flex-direction: column;
+            min-height: 0;
         }
         .chat-messages {
             flex: 1;
@@ -79,9 +83,13 @@
         }
         .status {
             text-align: center;
-            margin-bottom: 10px;
+            margin: 5px 0;
             font-weight: bold;
             color: #666;
+        }
+        h1 {
+            margin: 10px 0;
+            font-size: 24px;
         }
         .connection-status {
             position: fixed;
@@ -389,6 +397,12 @@
                         // Skip Q&A agent function completions (answer is already shown in HITL prompt)
                         if (name.includes('Function Complete') && name.includes('qa_agent')) {
                             console.log('Skipping Q&A agent function completion (already displayed)');
+                            break;
+                        }
+                        
+                        // Skip ReAct agent intermediate reasoning steps
+                        if (name.includes('qa_agent') || data.content.payload.includes('Thought:') || data.content.payload.includes('Action:')) {
+                            console.log('Skipping ReAct agent intermediate step');
                             break;
                         }
                         

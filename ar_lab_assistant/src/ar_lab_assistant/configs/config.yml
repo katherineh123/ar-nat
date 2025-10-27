@@ -13,7 +13,7 @@ functions:
     _type: react_agent
     tool_names: [rag_question_answering]
     llm_name: qa_llm
-    verbose: true
+    verbose: false
     additional_instructions: "You are a helpful lab assistant for the Kirby-Bauer disk diffusion assay experiment. Use the RAG tool to search for relevant information from the experiment protocol to answer the student's questions accurately. Provide clear, concise answers based on the retrieved information. If the information isn't in the protocol, terminate and make your final output say you couldn't find the information."
     max_tool_calls: 5
   
@@ -21,7 +21,7 @@ functions:
     _type: react_agent
     tool_names: [rag_question_answering]
     llm_name: qa_llm
-    verbose: true
+    verbose: false
     additional_instructions: "You are a helpful lab assistant for the Kirby-Bauer disk diffusion assay experiment. The student has just completed the visual process guidance through the experiment. Use the RAG tool to search for relevant information from the experiment protocol to answer their follow-up questions. Provide clear, helpful answers based on the retrieved information. If the information isn't in the protocol, terminate and make your final output say you couldn't find the information."
     max_tool_calls: 5
   
