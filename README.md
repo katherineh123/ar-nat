@@ -62,3 +62,23 @@ For example, it might look something like this (using default values here):
 ```
 http://localhost:8080/websocket_frontend.html
 ```
+
+## Example Inputs
+
+### Example Questions
+- "What tools are needed for this experiment?"
+- "Why are forceps needed for this experiment?"
+
+### Trigger VPG Workflow
+- "Let's get started"
+
+### Log Session / End Session
+- "Can you log this session?"
+
+
+## WIP Features
+- Reduce latency of the ReAct agent in the Q&A function
+- Increase coverage of the ReAct agent in the Q&A function (add Internet Search tool to fall back on if the RAG knowledge base can not answer the user's question)
+- Add a VLM tool to the ReAct agent in the Q&A function
+- Display session logs in the UI
+- Code clean-up

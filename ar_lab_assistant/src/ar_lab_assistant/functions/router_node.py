@@ -13,7 +13,7 @@ from nat.cli.register_workflow import register_function
 from nat.data_models.function import FunctionBaseConfig
 from nat.data_models.component_ref import LLMRef
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ class RouterNodeConfig(FunctionBaseConfig, name="router_node"):
     )
     available_routes: list[str] = Field(..., description="List of valid route destinations")
     default_route: str = Field(default="reprompt", description="Default route if LLM response is unclear")
+    context_window: int = Field(default=6, description="Number of recent messages to include for context (default 6 = last 3 exchanges)")
 
 
 @register_function(config_type=RouterNodeConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
@@ -55,12 +56,26 @@ async def router_node_function(config: RouterNodeConfig, builder: Builder):
         last_human_message = human_messages[-1]
         user_response = last_human_message.content
 
-        # Use LLM to determine routing
+        # Use LLM to determine routing with conversation context
         try:
-            routing_messages = [
-                SystemMessage(content=config.routing_prompt),
-                HumanMessage(content=f"User said: {user_response}\n\nWhich route should I take? Respond with ONLY the route name, nothing else.")
-            ]
+            # Build routing messages with recent conversation history for context
+            routing_messages = [SystemMessage(content=config.routing_prompt)]
+            
+            # Add recent conversation history (last N messages)
+            recent_messages = state["messages"][-config.context_window:] if len(state["messages"]) > config.context_window else state["messages"]
+            
+            # Add context from recent messages
+            if len(recent_messages) > 1:
+                context_summary = "Recent conversation:\n"
+                for msg in recent_messages[:-1]:  # Exclude the last message (we'll add it separately)
+                    if isinstance(msg, HumanMessage):
+                        context_summary += f"User: {msg.content}\n"
+                    elif isinstance(msg, AIMessage):
+                        context_summary += f"Assistant: {msg.content}\n"
+                routing_messages.append(HumanMessage(content=context_summary))
+            
+            # Add the current user response
+            routing_messages.append(HumanMessage(content=f"User's current response: {user_response}\n\nBased on the conversation context above, which route should I take? Respond with ONLY the route name, nothing else."))
             
             llm_response = await llm.ainvoke(routing_messages)
             route = llm_response.content.strip().lower()
