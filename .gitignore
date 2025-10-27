@@ -1,1 +1,12 @@
 NeMo-Agent-Toolkit/
+simple_frontend.html
+
+ar_lab_assistant/.venv/
+ar_lab_assistant/data/
+
+ar_lab_assistant/src/ar_lab_assistant.egg-info/
+ar_lab_assistant/src/ar_lab_assistant/__pycache__/
+
+#RAG embeddings
+ar_lab_assistant/src/ar_lab_assistant/data/kirby_bauer_documents.pkl
+ar_lab_assistant/src/ar_lab_assistant/data/kirby_bauer_faiss_index
