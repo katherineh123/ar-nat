@@ -1,6 +1,6 @@
 """
 Router Node for AR Lab Assistant workflow.
-Determines the path based on user response with configurable routing rules.
+Determines the path based on user response using LLM-based routing.
 """
 
 import logging
@@ -11,29 +11,34 @@ from nat.builder.framework_enum import LLMFrameworkEnum
 from nat.builder.function_info import FunctionInfo
 from nat.cli.register_workflow import register_function
 from nat.data_models.function import FunctionBaseConfig
+from nat.data_models.component_ref import LLMRef
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 logger = logging.getLogger(__name__)
 
 
 class RouterNodeConfig(FunctionBaseConfig, name="router_node"):
     """Router node configuration."""
-    router_name: str = Field(..., description="Name of this router (for logging)")
-    check_vpg_completion: bool = Field(default=False, description="Whether to check if VPG is completed")
-    routing_rules: dict[str, list[str]] = Field(
+    router_name: str = Field(..., description="Name of this router (for logging and routing identification)")
+    llm_name: LLMRef = Field(..., description="LLM to use for routing decisions")
+    routing_prompt: str = Field(
         ...,
-        description="Map of destination -> list of keywords. Keywords are matched against lowercased user input."
+        description="System prompt describing the routing rules and available destinations"
     )
-    default_route: str = Field(default="reprompt", description="Default route if no keywords match")
+    available_routes: list[str] = Field(..., description="List of valid route destinations")
+    default_route: str = Field(default="reprompt", description="Default route if LLM response is unclear")
 
 
 @register_function(config_type=RouterNodeConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def router_node_function(config: RouterNodeConfig, builder: Builder):
-    """Router - determines path based on user response."""
+    """Router - determines path based on user response using LLM."""
+    
+    # Get the LLM for routing decisions
+    llm = await builder.get_llm(config.llm_name, wrapper_type=LLMFrameworkEnum.LANGCHAIN)
     
     async def _router_node(state: dict) -> dict:
-        """Router - determines path based on user response."""
+        """Router - determines path based on user response using LLM."""
         if not state["messages"]:
             return state
 
@@ -48,30 +53,32 @@ async def router_node_function(config: RouterNodeConfig, builder: Builder):
         
         # Get the most recent human message
         last_human_message = human_messages[-1]
-        user_response = last_human_message.content.lower()
+        user_response = last_human_message.content
 
-        # Special case: Check if VPG has been completed (Router A only)
-        if config.check_vpg_completion and state.get("session_data", {}).get("vpg_completed", False):
-            state["current_node"] = f"{config.router_name}->router_b"
-            logger.info(f"{config.router_name}: VPG completed, routing to Router B")
-            return state
-
-        # Apply routing rules - check in order
-        route = None
-        for destination, keywords in config.routing_rules.items():
-            if any(phrase in user_response for phrase in keywords):
-                route = destination
-                break
-        
-        # Use default route if no match
-        if route is None:
+        # Use LLM to determine routing
+        try:
+            routing_messages = [
+                SystemMessage(content=config.routing_prompt),
+                HumanMessage(content=f"User said: {user_response}\n\nWhich route should I take? Respond with ONLY the route name, nothing else.")
+            ]
+            
+            llm_response = await llm.ainvoke(routing_messages)
+            route = llm_response.content.strip().lower()
+            
+            # Validate the route is in available_routes
+            if route not in [r.lower() for r in config.available_routes]:
+                logger.warning(f"{config.router_name}: LLM returned invalid route '{route}', using default")
+                route = config.default_route
+            
+            logger.info(f"{config.router_name}: LLM routed to '{route}' based on: {user_response[:50]}...")
+            
+        except Exception as e:
+            logger.error(f"{config.router_name}: LLM routing failed with error: {e}, using default route")
             route = config.default_route
         
         state["current_node"] = f"{config.router_name}->{route}"
         state["user_response"] = user_response
         
-        logger.info(f"{config.router_name}: Routing to {route} based on: {user_response[:50]}...")
-        
         return state
     
-    yield FunctionInfo.from_fn(_router_node, description=f"Router - determines path based on user response")
+    yield FunctionInfo.from_fn(_router_node, description=f"Router - determines path based on user response using LLM")

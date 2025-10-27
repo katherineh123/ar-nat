@@ -16,11 +16,18 @@ functions:
   router_a_node:
     _type: router_node
     router_name: "router_a"
-    check_vpg_completion: true
-    routing_rules:
-      end: ["end", "finish", "done", "exit", "quit", "stop", "log session", "end session"]
-      vpg: ["start", "begin", "guide", "procedure", "experiment", "let's start", "ready to start"]
-      qa: ["question", "ask", "what", "how", "why", "tell me"]
+    llm_name: routing_llm
+    routing_prompt: |
+      You are a routing assistant for a lab experiment workflow. Based on the user's response, determine which route to take.
+      
+      Available routes:
+      • **end** - User wants to finish/end the session (keywords: end, finish, done, exit, quit, stop, log session, end session)
+      • **vpg** - User wants to start/begin the visual process guidance through the experiment (keywords: start, begin, guide, procedure, experiment, let's start, ready to start)
+      • **qa** - User has a question about the experiment (keywords: question, ask, what, how, why, tell me, explain)
+      • **reprompt** - User's intent is unclear or they need to be redirected back on track
+      
+      Respond with ONLY the route name (end, vpg, qa, or reprompt), nothing else.
+    available_routes: ["end", "vpg", "qa", "reprompt"]
     default_route: "reprompt"
   
   qa_node_a:
@@ -42,11 +49,18 @@ functions:
   router_b_node:
     _type: router_node
     router_name: "router_b"
-    check_vpg_completion: false
-    routing_rules:
-      end: ["end", "finish", "done", "exit", "quit", "stop", "log session", "end session"]
-      qa: ["question", "ask", "what", "how", "why", "tell me"]
-      log: ["log", "yes"]
+    llm_name: routing_llm
+    routing_prompt: |
+      You are a routing assistant for a lab experiment workflow. The user has just completed the visual process guidance. Based on their response, determine which route to take.
+      
+      Available routes:
+      • **end** - User wants to finish/end the session without logging (keywords: end, finish, done, exit, quit, stop)
+      • **qa** - User has a follow-up question about the experiment they just performed (keywords: question, ask, what, how, why, tell me, explain)
+      • **log** - User wants to log the session and finish (keywords: log, log session, yes to logging)
+      • **reprompt** - User's intent is unclear or they need to be redirected back on track
+      
+      Respond with ONLY the route name (end, qa, log, or reprompt), nothing else.
+    available_routes: ["end", "qa", "log", "reprompt"]
     default_route: "reprompt"
   
   qa_node_b:
@@ -72,6 +86,11 @@ functions:
 
 llms:
   nim_llm:
+    _type: nim
+    model_name: meta/llama-3.1-70b-instruct
+    temperature: 0.0
+  
+  routing_llm:
     _type: nim
     model_name: meta/llama-3.1-70b-instruct
     temperature: 0.0
