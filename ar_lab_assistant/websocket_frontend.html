@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Lab Assistant - WebSocket Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .assistant-message {
+            background-color: #e9ecef;
+            color: #333;
+        }
+        .interaction-message {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            text-align: center;
+            font-weight: bold;
+        }
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .chat-input button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .chat-input button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .status {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #666;
+        }
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .interaction-prompt {
+            background-color: #e7f3ff;
+            border: 2px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .interaction-prompt input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .interaction-prompt button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .metadata-message {
+            background-color: #f8f9fa;
+            border-left: 3px solid #6c757d;
+            padding: 8px 12px;
+            margin: 5px 0;
+            font-size: 0.85em;
+            color: #6c757d;
+            font-family: 'Courier New', monospace;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Disconnected</div>
+    
+    <h1>🧪 AR Lab Assistant</h1>
+    <div class="status" id="status">Ready to help with your lab experiment! <button id="connectButton" onclick="connect()">Connect</button></div>
+    
+    <div class="chat-container">
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant-message">
+                Welcome to the AR Lab Assistant! Click "Connect" to start our conversation.
+            </div>
+        </div>
+        
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your response here...">
+            <button id="sendButton" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+
+        const API_BASE_URL = 'ws://10.185.124.93:8009/websocket';
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const connectButton = document.getElementById('connectButton');
+        const status = document.getElementById('status');
+        const connectionStatus = document.getElementById('connectionStatus');
+
+        function connect() {
+            if (isConnected) {
+                disconnect();
+                return;
+            }
+
+            try {
+                ws = new WebSocket(API_BASE_URL);
+                
+                ws.onopen = function(event) {
+                    isConnected = true;
+                    connectionStatus.textContent = 'Connected';
+                    connectionStatus.className = 'connection-status connected';
+                    connectButton.textContent = 'Disconnect';
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+                    status.textContent = 'Connected! You can start chatting.';
+                    
+                    // Send initial message to start the workflow
+                    sendInitialMessage();
+                };
+
+                ws.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                };
+
+                ws.onclose = function(event) {
+                    isConnected = false;
+                    connectionStatus.textContent = 'Disconnected';
+                    connectionStatus.className = 'connection-status disconnected';
+                    connectButton.textContent = 'Connect';
+                    messageInput.disabled = true;
+                    sendButton.disabled = true;
+                    status.textContent = 'Connection closed. Click Connect to reconnect.';
+                };
+
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                    status.textContent = 'Connection error. Please try again.';
+                };
+
+            } catch (error) {
+                console.error('Failed to connect:', error);
+                status.textContent = 'Failed to connect. Please check the server.';
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendInitialMessage() {
+            // Send an empty message to start the workflow
+            const message = {
+                type: "user_message",
+                schema_type: "generate_stream",
+                id: "msg_" + Date.now(),
+                conversation_id: "ar_lab_session_" + Date.now(),
+                content: {
+                    messages: [{
+                        role: "user",
+                        content: [{
+                            type: "text",
+                            text: ""
+                        }]
+                    }]
+                },
+                timestamp: new Date().toISOString(),
+                user: {
+                    name: "default",
+                    email: "default"
+                },
+                security: {
+                    api_key: "default",
+                    token: "default"
+                },
+                error: {
+                    code: "unknown_error",
+                    message: "default",
+                    details: "default"
+                },
+                schema_version: "1.0.0"
+            };
+            ws.send(JSON.stringify(message));
+        }
+
+        function sendMessage() {
+            if (!isConnected) return;
+            
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            messageInput.value = '';
+
+            // Send message via WebSocket
+            const wsMessage = {
+                type: "user_message",
+                schema_type: "generate_stream",
+                id: "msg_" + Date.now(),
+                conversation_id: "ar_lab_session_" + Date.now(),
+                content: {
+                    messages: [{
+                        role: "user",
+                        content: [{
+                            type: "text",
+                            text: message
+                        }]
+                    }]
+                },
+                timestamp: new Date().toISOString(),
+                user: {
+                    name: "default",
+                    email: "default"
+                },
+                security: {
+                    api_key: "default",
+                    token: "default"
+                },
+                error: {
+                    code: "unknown_error",
+                    message: "default",
+                    details: "default"
+                },
+                schema_version: "1.0.0"
+            };
+            ws.send(JSON.stringify(wsMessage));
+        }
+
+        function handleWebSocketMessage(data) {
+            console.log('Received WebSocket message:', data);
+
+            switch (data.type) {
+                case 'system_response_message':
+                    // Regular assistant response - display as chat bubble
+                    if (data.content && data.content.text) {
+                        addMessage(data.content.text, 'assistant');
+                    }
+                    break;
+
+                case 'system_interaction_message':
+                    // Human interaction prompt - display as chat bubble only
+                    if (data.content && data.content.text) {
+                        // Display the question as a chat bubble
+                        addMessage(data.content.text, 'assistant');
+                    }
+                    break;
+
+                case 'system_intermediate_message':
+                    // Intermediate step information - display as metadata
+                    if (data.content && data.content.payload) {
+                        addMetadataMessage(`${data.content.name}: ${data.content.payload}`);
+                    }
+                    break;
+
+                case 'error_message':
+                    // Error message
+                    const errorMsg = data.content ? 
+                        `Error: ${data.content.message || 'Unknown error'}` : 
+                        'Unknown error occurred';
+                    addMessage(errorMsg, 'assistant');
+                    break;
+
+                default:
+                    console.log('Unknown message type:', data.type);
+            }
+        }
+
+
+        function addMessage(content, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addMetadataMessage(content) {
+            const metadataDiv = document.createElement('div');
+            metadataDiv.className = 'metadata-message';
+            metadataDiv.textContent = content;
+            chatMessages.appendChild(metadataDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Handle Enter key
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

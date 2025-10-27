@@ -1,0 +1,22 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools >= 64"]
+
+[project]
+name = "ar_lab_assistant"
+version = "0.1.0"
+dependencies = [
+  "nvidia-nat[langchain]~=1.3",
+  "faiss-cpu>=1.7.4",
+  "sentence-transformers>=2.2.2",
+  "langchain-community>=0.0.20",
+  "langchain-text-splitters>=0.0.1",
+  "pypdf>=3.0.0",
+  "pydantic>=2.0.0",
+]
+requires-python = ">=3.11,<3.14"
+description = "Custom NeMo Agent Toolkit Workflow"
+classifiers = ["Programming Language :: Python"]
+
+[project.entry-points.'nat.components']
+ar_lab_assistant = "ar_lab_assistant.register"
