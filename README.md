@@ -19,15 +19,12 @@ Add your NVIDIA API key.
 `export NVIDIA_API_KEY="your-api-key-here"`
 
 Start the nat backend server.
-`nat serve --config_file configs/config.yml --port 8009 --host 0.0.0.0`
+`nat serve --config_file src/ar_lab_assistant/configs/config.yml --port 8009 --host 0.0.0.0`
 To see code changes, you can Ctrl+C to shut down the server and then restart it.
 
-Start the CORS Proxy server (handles cross-origin requests between frontend and backend).
-`python3 cors_proxy.py`
-
 Start the Frontend HTTP Server.
-`python3 -m http.server 8081`
+`python3 -m http.server 8083`
 
 
 Open the frontend in your browser by going to.
-`http://[your-ip]:8081/simple_frontend.html`
+`http://[your-ip]:8083/websocket_frontend.html`

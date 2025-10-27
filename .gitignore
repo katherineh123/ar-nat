@@ -10,3 +10,8 @@ ar_lab_assistant/src/ar_lab_assistant/__pycache__/
 #RAG embeddings
 ar_lab_assistant/src/ar_lab_assistant/data/kirby_bauer_documents.pkl
 ar_lab_assistant/src/ar_lab_assistant/data/kirby_bauer_faiss_index
+
+ar_lab_assistant/src/ar_lab_assistant/archive/
+
+ar_lab_assistant/src/ar_lab_assistant/functions/__pycache__/
+ar_lab_assistant/src/ar_lab_assistant/tools/__pycache__/

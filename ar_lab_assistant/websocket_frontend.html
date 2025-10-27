@@ -159,6 +159,10 @@
     <script>
         let ws = null;
         let isConnected = false;
+        let conversationId = null;  // Single conversation ID for entire session
+        let workflowStarted = false;  // Track if workflow has been started
+        let waitingForHITLResponse = false;  // Track if we're waiting for a HITL response
+        let lastInteractionId = null;  // Track the last interaction prompt ID
 
         const API_BASE_URL = 'ws://10.185.124.93:8009/websocket';
         const chatMessages = document.getElementById('chatMessages');
@@ -179,6 +183,10 @@
                 
                 ws.onopen = function(event) {
                     isConnected = true;
+                    // Create a single conversation ID for this entire session
+                    conversationId = "ar_lab_session_" + Date.now();
+                    workflowStarted = false;
+                    
                     connectionStatus.textContent = 'Connected';
                     connectionStatus.className = 'connection-status connected';
                     connectButton.textContent = 'Disconnect';
@@ -197,6 +205,11 @@
 
                 ws.onclose = function(event) {
                     isConnected = false;
+                    conversationId = null;  // Reset conversation ID for next session
+                    workflowStarted = false;
+                    waitingForHITLResponse = false;  // Reset HITL state
+                    lastInteractionId = null;
+                    
                     connectionStatus.textContent = 'Disconnected';
                     connectionStatus.className = 'connection-status disconnected';
                     connectButton.textContent = 'Connect';
@@ -224,12 +237,13 @@
         }
 
         function sendInitialMessage() {
-            // Send an empty message to start the workflow
+            // Send an empty message to start the workflow ONCE
+            workflowStarted = true;
             const message = {
                 type: "user_message",
                 schema_type: "generate_stream",
                 id: "msg_" + Date.now(),
-                conversation_id: "ar_lab_session_" + Date.now(),
+                conversation_id: conversationId,  // Use the SAME conversation ID
                 content: {
                     messages: [{
                         role: "user",
@@ -268,37 +282,76 @@
             addMessage(message, 'user');
             messageInput.value = '';
 
-            // Send message via WebSocket
-            const wsMessage = {
-                type: "user_message",
-                schema_type: "generate_stream",
-                id: "msg_" + Date.now(),
-                conversation_id: "ar_lab_session_" + Date.now(),
-                content: {
-                    messages: [{
-                        role: "user",
-                        content: [{
-                            type: "text",
-                            text: message
+            // Determine message type based on whether we're responding to HITL prompt
+            let wsMessage;
+            
+            if (waitingForHITLResponse) {
+                // Send a HITL response using user_interaction_message
+                console.log('Sending HITL response to interaction:', lastInteractionId);
+                wsMessage = {
+                    type: "user_interaction_message",
+                    id: "response_" + Date.now(),
+                    thread_id: "thread_" + conversationId,
+                    parent_id: lastInteractionId,  // Reference the interaction we're responding to
+                    conversation_id: conversationId,
+                    content: {
+                        messages: [{
+                            role: "user",
+                            content: [{
+                                type: "text",
+                                text: message
+                            }]
                         }]
-                    }]
-                },
-                timestamp: new Date().toISOString(),
-                user: {
-                    name: "default",
-                    email: "default"
-                },
-                security: {
-                    api_key: "default",
-                    token: "default"
-                },
-                error: {
-                    code: "unknown_error",
-                    message: "default",
-                    details: "default"
-                },
-                schema_version: "1.0.0"
-            };
+                    },
+                    timestamp: new Date().toISOString(),
+                    user: {
+                        name: "default",
+                        email: "default"
+                    },
+                    security: {
+                        api_key: "default",
+                        token: "default"
+                    },
+                    schema_version: "1.0.0"
+                };
+                // Reset HITL tracking
+                waitingForHITLResponse = false;
+                lastInteractionId = null;
+            } else {
+                // Send a regular workflow invocation message
+                console.log('Sending regular message');
+                wsMessage = {
+                    type: "user_message",
+                    schema_type: "generate_stream",
+                    id: "msg_" + Date.now(),
+                    conversation_id: conversationId,
+                    content: {
+                        messages: [{
+                            role: "user",
+                            content: [{
+                                type: "text",
+                                text: message
+                            }]
+                        }]
+                    },
+                    timestamp: new Date().toISOString(),
+                    user: {
+                        name: "default",
+                        email: "default"
+                    },
+                    security: {
+                        api_key: "default",
+                        token: "default"
+                    },
+                    error: {
+                        code: "unknown_error",
+                        message: "default",
+                        details: "default"
+                    },
+                    schema_version: "1.0.0"
+                };
+            }
+            
             ws.send(JSON.stringify(wsMessage));
         }
 
@@ -318,6 +371,10 @@
                     if (data.content && data.content.text) {
                         // Display the question as a chat bubble
                         addMessage(data.content.text, 'assistant');
+                        // Mark that we're waiting for a HITL response
+                        waitingForHITLResponse = true;
+                        lastInteractionId = data.id;
+                        console.log('Waiting for HITL response to interaction:', lastInteractionId);
                     }
                     break;
 

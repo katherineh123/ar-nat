@@ -1,15 +1,14 @@
-import asyncio
-import json
+"""
+RAG Question Answering Tool for AR Lab Assistant.
+This module contains the RAGSystem class and the RAG question answering function.
+"""
+
 import logging
-import sqlite3
-from datetime import datetime
-from pathlib import Path
-from typing import AsyncGenerator, List, Dict, Any
-import pickle
 import os
+import pickle
+from typing import List, Dict, Any
 
 import faiss
-import numpy as np
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
@@ -118,69 +117,23 @@ class RAGSystem:
         return results
 
 
-class VisualProcessGuidanceConfig(FunctionBaseConfig, name="visual_process_guidance"):
-    """
-    Visual Process Guidance tool for AR lab experiments.
-    Provides step-by-step guidance through lab procedures with visual feedback.
-    """
-    experiment_type: str = Field(default="Kirby-Bauer disk diffusion assay", description="Type of experiment being performed")
-
-
 class RAGQuestionAnsweringConfig(FunctionBaseConfig, name="rag_question_answering"):
     """
     RAG-based question answering tool for lab science experiments.
     Answers questions about lab procedures, safety, and scientific concepts using PDF knowledge base.
     """
-    pdf_path: str = Field(default="src/ar_lab_assistant/data/Kirby-Bauer-Disk-Diffusion-Susceptibility-Test-Protocol.pdf", description="Path to the PDF knowledge base file")
-    experiment_type: str = Field(default="Kirby-Bauer disk diffusion assay", description="Type of experiment being performed")
-    max_results: int = Field(default=3, description="Maximum number of relevant documents to retrieve")
-
-
-class ExperimentLoggingConfig(FunctionBaseConfig, name="experiment_logging"):
-    """
-    Experiment logging tool for recording lab sessions.
-    Logs experiment summaries, timestamps, and student information.
-    """
-    db_path: str = Field(default="data/experiment_logs.db", description="Path to the SQLite database file")
-    experiment_type: str = Field(default="Kirby-Bauer disk diffusion assay", description="Type of experiment being performed")
-
-
-@register_function(config_type=VisualProcessGuidanceConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
-async def visual_process_guidance_function(config: VisualProcessGuidanceConfig, builder: Builder):
-    """
-    Registers the Visual Process Guidance function for AR lab experiments.
-    """
-    
-    async def _visual_process_guidance(trigger: str = "start") -> str:
-        """
-        Initiates visual process guidance for lab experiments.
-        Provides step-by-step instructions with audio feedback.
-        This is a mock implementation that simulates the AR guidance process.
-        
-        Args:
-            trigger (str): Trigger to start the guidance process
-        
-        Returns:
-            str: Confirmation that the guidance process is complete.
-        """
-        logger.info("Starting Visual Process Guidance for %s experiment", config.experiment_type)
-        
-        # Mock the AR guidance process with step-by-step feedback
-        steps = [
-            "Step 1: Prepare your bacterial suspension by pipetting 4ml of saline.",
-            "Step 2: Gently shake the petri dish back and forth.",
-            "Congratulations! You have successfully completed the experiment."
-        ]
-        
-        guidance_output = []
-        for i, step in enumerate(steps, 1):
-            guidance_output.append(f"Step {i}: {step}")
-            await asyncio.sleep(0.5)  # Simulate processing time
-        
-        logger.info("Visual Process Guidance completed")
-        return "\n".join(guidance_output)
-    
-    yield FunctionInfo.from_fn(_visual_process_guidance, description=_visual_process_guidance.__doc__)
+    pdf_path: str = Field(
+        default="src/ar_lab_assistant/data/Kirby-Bauer-Disk-Diffusion-Susceptibility-Test-Protocol.pdf",
+        description="Path to the PDF knowledge base file"
+    )
+    experiment_type: str = Field(
+        default="Kirby-Bauer disk diffusion assay",
+        description="Type of experiment being performed"
+    )
+    max_results: int = Field(
+        default=3,
+        description="Maximum number of relevant documents to retrieve"
+    )
 
 
 @register_function(config_type=RAGQuestionAnsweringConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
@@ -235,62 +188,3 @@ async def rag_question_answering_function(config: RAGQuestionAnsweringConfig, bu
             return f"I encountered an error while searching for information about '{question}'. Please try again or ask a different question about the {config.experiment_type} experiment."
     
     yield FunctionInfo.from_fn(_rag_question_answering, description=_rag_question_answering.__doc__)
-
-
-@register_function(config_type=ExperimentLoggingConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
-async def experiment_logging_function(config: ExperimentLoggingConfig, builder: Builder):
-    """
-    Registers the experiment logging function for recording lab sessions.
-    """
-    
-    async def _experiment_logging(conversation_summary: str) -> str:
-        """
-        Logs the experiment session to a database.
-        
-        Args:
-            conversation_summary (str): Summary of the conversation and experiment performed.
-            
-        Returns:
-            str: Confirmation of logging completion.
-        """
-        logger.info("Logging experiment session")
-        
-        # Ensure data directory exists
-        data_dir = Path(config.db_path).parent
-        data_dir.mkdir(exist_ok=True)
-        
-        # Initialize database if it doesn't exist
-        conn = sqlite3.connect(config.db_path)
-        cursor = conn.cursor()
-        
-        # Create table if it doesn't exist
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS experiment_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                scientist_name TEXT NOT NULL,
-                experiment_type TEXT NOT NULL,
-                conversation_summary TEXT NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Get the next student number
-        cursor.execute('SELECT COUNT(*) FROM experiment_logs')
-        student_count = cursor.fetchone()[0]
-        scientist_name = f"Student {student_count + 1}"
-        
-        # Insert the log entry
-        timestamp = datetime.now().isoformat()
-        cursor.execute('''
-            INSERT INTO experiment_logs (timestamp, scientist_name, experiment_type, conversation_summary)
-            VALUES (?, ?, ?, ?)
-        ''', (timestamp, scientist_name, config.experiment_type, conversation_summary))
-        
-        conn.commit()
-        conn.close()
-        
-        logger.info("Experiment logged for %s", scientist_name)
-        return f"Experiment session logged successfully for {scientist_name}. Session ended."
-    
-    yield FunctionInfo.from_fn(_experiment_logging, description=_experiment_logging.__doc__)
