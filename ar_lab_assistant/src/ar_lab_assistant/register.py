@@ -246,11 +246,19 @@ async def ar_lab_workflow(config: ARLabWorkflowConfig, builder: Builder):
             final_message = ""
             for msg in reversed(result["messages"]):
                 if isinstance(msg, AIMessage):
-                    final_message = msg.content
+                    content = msg.content
+                    # Handle if content is a dict (e.g., {"value": "..."})
+                    if isinstance(content, dict):
+                        final_message = content.get("value", str(content))
+                    else:
+                        final_message = str(content)
                     break
             
             if not final_message:
                 final_message = "Workflow completed."
+            
+            # Clean up escaped newlines if present
+            final_message = final_message.replace("\\n", "\n")
             
             if config.verbose:
                 logger.info("AR Lab Assistant workflow completed successfully")

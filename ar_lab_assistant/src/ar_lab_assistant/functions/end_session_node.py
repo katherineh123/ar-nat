@@ -42,6 +42,25 @@ async def end_session_node_function(config: EndSessionNodeConfig, builder: Build
         
         logger.info("End Session: Session ended without logging")
         
+        # Display the final message via HITL (so it shows properly in UI)
+        from nat.builder.context import Context
+        from nat.data_models.interactive import HumanPromptText
+        
+        context = Context.get()
+        user_input_manager = context.user_interaction_manager
+        
+        # Send the final message as a non-required prompt (just for display)
+        prompt = HumanPromptText(
+            text=response,
+            required=False,
+            placeholder=""
+        )
+        
+        try:
+            await user_input_manager.prompt_user_input(prompt)
+        except:
+            pass  # If no UI interaction manager, that's okay
+        
         return state
     
     yield FunctionInfo.from_fn(_end_session_node, description="End Session node - ends session without logging")

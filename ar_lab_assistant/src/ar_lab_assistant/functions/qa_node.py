@@ -1,6 +1,6 @@
 """
 Q&A Node for AR Lab Assistant workflow.
-Handles questions using RAG tool with configurable prompts.
+Uses NAT's built-in ReAct agent with RAG tool to answer questions naturally.
 """
 
 import logging
@@ -11,6 +11,7 @@ from nat.builder.framework_enum import LLMFrameworkEnum
 from nat.builder.function_info import FunctionInfo
 from nat.cli.register_workflow import register_function
 from nat.data_models.function import FunctionBaseConfig
+from nat.data_models.component_ref import FunctionRef
 
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -19,23 +20,21 @@ logger = logging.getLogger(__name__)
 
 class QANodeConfig(FunctionBaseConfig, name="qa_node"):
     """Q&A Node configuration."""
-    rag_tool_name: str = Field(default="rag_question_answering", description="Name of the RAG tool to use")
-    response_prefix: str = Field(default="Based on the experiment:", description="Prefix for RAG responses")
+    qa_agent_name: FunctionRef = Field(..., description="Name of the ReAct agent function to use for Q&A")
     no_question_message: str = Field(default="I didn't receive a question. Could you please ask me something?", description="Message when no question is provided")
-    error_message: str = Field(default="I can help answer questions. Could you be more specific?", description="Message when RAG fails")
     follow_up_prompt: str = Field(default="Do you have any other questions?", description="Follow-up prompt for user")
 
 
 @register_function(config_type=QANodeConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def qa_node_function(config: QANodeConfig, builder: Builder):
-    """Q&A Node - handles questions using RAG."""
+    """Q&A Node - handles questions using NAT's built-in ReAct agent."""
     
-    # Get the RAG tool
-    rag_tool = await builder.get_tool(config.rag_tool_name, wrapper_type=LLMFrameworkEnum.LANGCHAIN)
+    # Get the ReAct agent function
+    qa_agent = await builder.get_function(config.qa_agent_name)
     
     async def _qa_node(state: dict) -> dict:
-        """Q&A Node - handles questions."""
-        # Use RAG tool to answer questions
+        """Q&A Node - uses NAT's ReAct agent to answer questions with tool calling."""
+        # Extract the user's question
         human_messages = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)]
         
         if not human_messages:
@@ -46,17 +45,27 @@ async def qa_node_function(config: QANodeConfig, builder: Builder):
         last_human_message = human_messages[-1]
         question = last_human_message.content
         
-        # Call RAG tool
+        # Call the ReAct agent to answer the question
         try:
-            answer = await rag_tool.ainvoke({"question": question})
-            response = f"{config.response_prefix} {answer}"
+            logger.info(f"Q&A: Calling ReAct agent for question: {question[:50]}...")
+            
+            # Invoke the ReAct agent with the question
+            answer = await qa_agent.ainvoke(question)
+            response = str(answer)
+            
+            logger.info(f"Q&A: Agent responded successfully")
+            
         except Exception as e:
-            response = config.error_message
-            logger.error(f"RAG tool error: {e}")
+            response = "I encountered an error while trying to answer your question. Could you please rephrase it?"
+            logger.error(f"ReAct agent error: {e}", exc_info=True)
         
+        # Combine the answer with the follow-up prompt for display
+        combined_prompt = f"{response}\n\n{config.follow_up_prompt}"
+        
+        # Add the answer to conversation history (without the follow-up prompt)
         state["messages"].append(AIMessage(content=response))
         
-        # Ask for follow-up input
+        # Ask for follow-up input (display includes answer + follow-up prompt together)
         from nat.builder.context import Context
         from nat.data_models.interactive import HumanPromptText
         
@@ -64,7 +73,7 @@ async def qa_node_function(config: QANodeConfig, builder: Builder):
         user_input_manager = context.user_interaction_manager
         
         prompt = HumanPromptText(
-            text=config.follow_up_prompt,
+            text=combined_prompt,  # Show answer + follow-up together
             required=True,
             placeholder="Type your response here..."
         )
@@ -80,4 +89,4 @@ async def qa_node_function(config: QANodeConfig, builder: Builder):
         
         return state
     
-    yield FunctionInfo.from_fn(_qa_node, description="Q&A Node - handles questions using RAG")
+    yield FunctionInfo.from_fn(_qa_node, description="Q&A Node - uses NAT's ReAct agent to answer questions with tool calling")

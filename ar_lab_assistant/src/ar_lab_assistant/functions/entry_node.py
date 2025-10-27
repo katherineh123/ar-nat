@@ -52,7 +52,7 @@ async def entry_node_function(config: EntryNodeConfig, builder: Builder):
         user_input_manager = context.user_interaction_manager
         
         prompt = HumanPromptText(
-            text="How would you like to proceed? You can ask questions about the experiment or ask me to guide you through it.",
+            text="I am a tool for lab science students. Today, we will be following a procedure to perform the Kirby-Bauer disk diffusion assay experiment, which is a method used to determine the effectiveness of antibiotics against specific bacteria. Let's get started! We can begin by answering any initial questions you have for me, or we can jump right into it and I can guide you through the experiment. How would you like to proceed?",
             required=True,
             placeholder="Type your response here..."
         )

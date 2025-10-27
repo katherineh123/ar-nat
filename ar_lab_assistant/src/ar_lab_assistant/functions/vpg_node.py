@@ -61,7 +61,7 @@ async def vpg_node_function(config: VPGNodeConfig, builder: Builder):
         user_input_manager = context.user_interaction_manager
         
         prompt = HumanPromptText(
-            text="Do you have any follow-up questions for me, or would you like to log what we just did and exit?",
+            text="[Visual Process Guidance workflow happens] \n\nDo you have any follow-up questions for me, or would you like to log what we just did and exit?",
             required=True,
             placeholder="Type your response here..."
         )

@@ -8,6 +8,23 @@ functions:
     experiment_type: "Kirby-Bauer disk diffusion assay"
     max_results: 3
   
+  # Define the ReAct agents for Q&A (using NAT's built-in react_agent)
+  qa_agent_a:
+    _type: react_agent
+    tool_names: [rag_question_answering]
+    llm_name: qa_llm
+    verbose: true
+    additional_instructions: "You are a helpful lab assistant for the Kirby-Bauer disk diffusion assay experiment. Use the RAG tool to search for relevant information from the experiment protocol to answer the student's questions accurately. Provide clear, concise answers based on the retrieved information. If the information isn't in the protocol, terminate and make your final output say you couldn't find the information."
+    max_tool_calls: 5
+  
+  qa_agent_b:
+    _type: react_agent
+    tool_names: [rag_question_answering]
+    llm_name: qa_llm
+    verbose: true
+    additional_instructions: "You are a helpful lab assistant for the Kirby-Bauer disk diffusion assay experiment. The student has just completed the visual process guidance through the experiment. Use the RAG tool to search for relevant information from the experiment protocol to answer their follow-up questions. Provide clear, helpful answers based on the retrieved information. If the information isn't in the protocol, terminate and make your final output say you couldn't find the information."
+    max_tool_calls: 5
+  
   # Define all the node functions
   entry_node:
     _type: entry_node
@@ -32,10 +49,8 @@ functions:
   
   qa_node_a:
     _type: qa_node
-    rag_tool_name: rag_question_answering
-    response_prefix: "Based on the Kirby-Bauer experiment:"
+    qa_agent_name: qa_agent_a
     no_question_message: "I didn't receive a question. Could you please ask me something about the experiment?"
-    error_message: "I can help answer questions about the experiment. Could you be more specific about what you'd like to know?"
     follow_up_prompt: "Do you have any other questions about the experiment, or would you like me to guide you through it?"
   
   vpg_node:
@@ -65,10 +80,8 @@ functions:
   
   qa_node_b:
     _type: qa_node
-    rag_tool_name: rag_question_answering
-    response_prefix: "Great question! Based on the experiment we just performed:"
+    qa_agent_name: qa_agent_b
     no_question_message: "I didn't receive a question. Could you please ask me something about the experiment we just performed?"
-    error_message: "I can help answer questions about the experiment we just performed. Could you be more specific?"
     follow_up_prompt: "Do you have any other questions about the experiment, or would you like to log this session and finish?"
   
   log_session_node:
@@ -91,6 +104,11 @@ llms:
     temperature: 0.0
   
   routing_llm:
+    _type: nim
+    model_name: meta/llama-3.1-70b-instruct
+    temperature: 0.0
+  
+  qa_llm:
     _type: nim
     model_name: meta/llama-3.1-70b-instruct
     temperature: 0.0

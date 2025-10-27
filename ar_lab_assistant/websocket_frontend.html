@@ -382,9 +382,18 @@
                     break;
 
                 case 'system_intermediate_message':
-                    // Intermediate step information - display as metadata
+                    // Intermediate step information
                     if (data.content && data.content.payload) {
-                        addMetadataMessage(`${data.content.name}: ${data.content.payload}`);
+                        const name = data.content.name || '';
+                        
+                        // Skip Q&A agent function completions (answer is already shown in HITL prompt)
+                        if (name.includes('Function Complete') && name.includes('qa_agent')) {
+                            console.log('Skipping Q&A agent function completion (already displayed)');
+                            break;
+                        }
+                        
+                        // Display other intermediate messages as metadata
+                        addMetadataMessage(`${name}: ${data.content.payload}`);
                     }
                     break;
 
