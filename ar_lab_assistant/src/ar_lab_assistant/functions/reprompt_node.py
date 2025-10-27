@@ -1,6 +1,6 @@
 """
-Reprompt Node A for AR Lab Assistant workflow.
-Guides user back on track before VPG.
+Reprompt Node for AR Lab Assistant workflow.
+Guides user back on track with a configurable message.
 """
 
 import logging
@@ -17,23 +17,20 @@ from langchain_core.messages import HumanMessage, AIMessage
 logger = logging.getLogger(__name__)
 
 
-class RepromptNodeAConfig(FunctionBaseConfig, name="reprompt_node_a"):
-    """Reprompt Node A configuration."""
+class RepromptNodeConfig(FunctionBaseConfig, name="reprompt_node"):
+    """Reprompt Node configuration."""
     reprompt_message: str = Field(
-        default=(
-            "I'm here to help you with the Kirby-Bauer disk diffusion assay experiment. "
-            "So would you like to ask initial questions about the experiment, or shall we dive into it?"
-        ),
+        ...,
         description="The reprompt message to guide the user"
     )
 
 
-@register_function(config_type=RepromptNodeAConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
-async def reprompt_node_a_function(config: RepromptNodeAConfig, builder: Builder):
-    """Re-prompt Node A - guides user back on track."""
+@register_function(config_type=RepromptNodeConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
+async def reprompt_node_function(config: RepromptNodeConfig, builder: Builder):
+    """Re-prompt Node - guides user back on track."""
     
-    async def _reprompt_node_a(state: dict) -> dict:
-        """Re-prompt Node A - guides user back on track."""
+    async def _reprompt_node(state: dict) -> dict:
+        """Re-prompt Node - guides user back on track."""
         response = config.reprompt_message
         
         state["messages"].append(AIMessage(content=response))
@@ -58,8 +55,8 @@ async def reprompt_node_a_function(config: RepromptNodeAConfig, builder: Builder
         state["messages"].append(HumanMessage(content=user_response))
         state["user_response"] = user_response
         
-        logger.info(f"Re-prompt A: Guided user and got response: {user_response[:50]}...")
+        logger.info(f"Reprompt: Guided user and got response: {user_response[:50]}...")
         
         return state
     
-    yield FunctionInfo.from_fn(_reprompt_node_a, description="Re-prompt Node A - guides user back on track")
+    yield FunctionInfo.from_fn(_reprompt_node, description="Reprompt Node - guides user back on track")

@@ -14,26 +14,48 @@ functions:
     greeting_message: "I am a tool for lab science students. Today, we will be following a procedure to perform the Kirby-Bauer disk diffusion assay experiment, which is a method used to determine the effectiveness of antibiotics against specific bacteria. Let's get started! We can begin by answering any initial questions you have for me, or we can jump right into it and I can guide you through the experiment."
   
   router_a_node:
-    _type: router_a_node
+    _type: router_node
+    router_name: "router_a"
+    check_vpg_completion: true
+    routing_rules:
+      end: ["end", "finish", "done", "exit", "quit", "stop", "log session", "end session"]
+      vpg: ["start", "begin", "guide", "procedure", "experiment", "let's start", "ready to start"]
+      qa: ["question", "ask", "what", "how", "why", "tell me"]
+    default_route: "reprompt"
   
   qa_node_a:
-    _type: qa_node_a
+    _type: qa_node
     rag_tool_name: rag_question_answering
+    response_prefix: "Based on the Kirby-Bauer experiment:"
+    no_question_message: "I didn't receive a question. Could you please ask me something about the experiment?"
+    error_message: "I can help answer questions about the experiment. Could you be more specific about what you'd like to know?"
+    follow_up_prompt: "Do you have any other questions about the experiment, or would you like me to guide you through it?"
   
   vpg_node:
     _type: vpg_node
     experiment_type: "Kirby-Bauer disk diffusion assay"
   
   reprompt_node_a:
-    _type: reprompt_node_a
+    _type: reprompt_node
     reprompt_message: "I'm here to help you with the Kirby-Bauer disk diffusion assay experiment. So would you like to ask initial questions about the experiment, or shall we dive into it?"
   
   router_b_node:
-    _type: router_b_node
+    _type: router_node
+    router_name: "router_b"
+    check_vpg_completion: false
+    routing_rules:
+      end: ["end", "finish", "done", "exit", "quit", "stop", "log session", "end session"]
+      qa: ["question", "ask", "what", "how", "why", "tell me"]
+      log: ["log", "yes"]
+    default_route: "reprompt"
   
   qa_node_b:
-    _type: qa_node_b
+    _type: qa_node
     rag_tool_name: rag_question_answering
+    response_prefix: "Great question! Based on the experiment we just performed:"
+    no_question_message: "I didn't receive a question. Could you please ask me something about the experiment we just performed?"
+    error_message: "I can help answer questions about the experiment we just performed. Could you be more specific?"
+    follow_up_prompt: "Do you have any other questions about the experiment, or would you like to log this session and finish?"
   
   log_session_node:
     _type: log_session_node
@@ -45,7 +67,7 @@ functions:
     end_message: "Session ended. Thank you for using the AR Lab Assistant!"
   
   reprompt_node_b:
-    _type: reprompt_node_b
+    _type: reprompt_node
     reprompt_message: "I'm here to help you with questions about the experiment we just performed. So would you like to ask more questions about the experiment, or would you like to log this session and finish?"
 
 llms:

@@ -1,6 +1,6 @@
 """
-Q&A Node A for AR Lab Assistant workflow.
-Handles initial questions before VPG using RAG tool.
+Q&A Node for AR Lab Assistant workflow.
+Handles questions using RAG tool with configurable prompts.
 """
 
 import logging
@@ -17,25 +17,29 @@ from langchain_core.messages import HumanMessage, AIMessage
 logger = logging.getLogger(__name__)
 
 
-class QANodeAConfig(FunctionBaseConfig, name="qa_node_a"):
-    """Q&A Node A configuration."""
+class QANodeConfig(FunctionBaseConfig, name="qa_node"):
+    """Q&A Node configuration."""
     rag_tool_name: str = Field(default="rag_question_answering", description="Name of the RAG tool to use")
+    response_prefix: str = Field(default="Based on the experiment:", description="Prefix for RAG responses")
+    no_question_message: str = Field(default="I didn't receive a question. Could you please ask me something?", description="Message when no question is provided")
+    error_message: str = Field(default="I can help answer questions. Could you be more specific?", description="Message when RAG fails")
+    follow_up_prompt: str = Field(default="Do you have any other questions?", description="Follow-up prompt for user")
 
 
-@register_function(config_type=QANodeAConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
-async def qa_node_a_function(config: QANodeAConfig, builder: Builder):
-    """Q&A Node A - handles initial questions using RAG."""
+@register_function(config_type=QANodeConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
+async def qa_node_function(config: QANodeConfig, builder: Builder):
+    """Q&A Node - handles questions using RAG."""
     
     # Get the RAG tool
     rag_tool = await builder.get_tool(config.rag_tool_name, wrapper_type=LLMFrameworkEnum.LANGCHAIN)
     
-    async def _qa_node_a(state: dict) -> dict:
-        """Q&A Node A - handles initial questions."""
+    async def _qa_node(state: dict) -> dict:
+        """Q&A Node - handles questions."""
         # Use RAG tool to answer questions
         human_messages = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)]
         
         if not human_messages:
-            response = "I didn't receive a question. Could you please ask me something about the experiment?"
+            response = config.no_question_message
             state["messages"].append(AIMessage(content=response))
             return state
             
@@ -45,9 +49,9 @@ async def qa_node_a_function(config: QANodeAConfig, builder: Builder):
         # Call RAG tool
         try:
             answer = await rag_tool.ainvoke({"question": question})
-            response = f"Based on the Kirby-Bauer experiment: {answer}"
+            response = f"{config.response_prefix} {answer}"
         except Exception as e:
-            response = "I can help answer questions about the experiment. Could you be more specific about what you'd like to know?"
+            response = config.error_message
             logger.error(f"RAG tool error: {e}")
         
         state["messages"].append(AIMessage(content=response))
@@ -60,7 +64,7 @@ async def qa_node_a_function(config: QANodeAConfig, builder: Builder):
         user_input_manager = context.user_interaction_manager
         
         prompt = HumanPromptText(
-            text="Do you have any other questions about the experiment, or would you like me to guide you through it?",
+            text=config.follow_up_prompt,
             required=True,
             placeholder="Type your response here..."
         )
@@ -72,8 +76,8 @@ async def qa_node_a_function(config: QANodeAConfig, builder: Builder):
         state["messages"].append(HumanMessage(content=user_response))
         state["user_response"] = user_response
         
-        logger.info(f"Q&A A: Answered question and got follow-up: {user_response[:50]}...")
+        logger.info(f"Q&A: Answered question and got follow-up: {user_response[:50]}...")
         
         return state
     
-    yield FunctionInfo.from_fn(_qa_node_a, description="Q&A Node A - handles initial questions using RAG")
+    yield FunctionInfo.from_fn(_qa_node, description="Q&A Node - handles questions using RAG")

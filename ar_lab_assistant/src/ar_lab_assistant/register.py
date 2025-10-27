@@ -25,15 +25,12 @@ from nat.utils.type_converter import GlobalTypeConverter
 # Import all functions and tools to trigger their registration
 from ar_lab_assistant.functions import (  # noqa: F401
     entry_node_function,
-    router_a_node_function,
-    qa_node_a_function,
+    router_node_function,
+    qa_node_function,
     vpg_node_function,
-    reprompt_node_a_function,
-    router_b_node_function,
-    qa_node_b_function,
+    reprompt_node_function,
     log_session_node_function,
     end_session_node_function,
-    reprompt_node_b_function,
 )
 from ar_lab_assistant.tools import rag_question_answering_function  # noqa: F401
 
